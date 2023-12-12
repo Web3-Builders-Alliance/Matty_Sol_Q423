@@ -61,7 +61,11 @@ pub struct DonateCampaign<'info> {
     #[account(mut)]
     pub donor: Signer<'info>,
 
-    #[account(mut)]
+    //send the seed 
+    #[account(
+        seeds = [b"escrow",escrow.fundraiser_ata.key().as_ref()],
+        bump = escrow.escrow_bump,
+    )]
     pub escrow: Account<'info, CampaignEscrow>,
 
     #[account(
