@@ -95,7 +95,7 @@ pub mod go_fund_me {
     pub fn initialize_campaign(ctx: Context<InitCampaign>) -> Result<()> {
         ctx.accounts.escrow.goal_amount = 100;
         ctx.accounts.escrow.escrow_bump = ctx.bumps.escrow;
-        ctx.accounts.escrow.fundraiser = ctx.accounts.fundraiser.to_account_info().key();
+        ctx.accounts.escrow.fundraiser = ctx.accounts.fundraiser.key();
 
         Ok(())
     }

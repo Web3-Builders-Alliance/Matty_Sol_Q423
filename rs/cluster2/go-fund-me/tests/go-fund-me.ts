@@ -26,9 +26,9 @@ describe("go-fund-me \n",  async () => {
   let mint_token: PublicKey;
 
   // ATAs
-  let fundraiser_ata: Account; // Fundraiser + mint_token
-  let donor_ata: Account; // Donor + mint token
-  let vault_ata: Account; // vault pda + mint token
+  let fundraiser_ata: PublicKey; // Fundraiser + mint_token
+  let donor_ata: PublicKey; // Donor + mint token
+  let vault_ata: PublicKey; // vault pda + mint token
 
   it("Airdrop", async () => {
     await Promise.all([fundraiser, donor].map(async (k) => {
@@ -46,11 +46,11 @@ describe("go-fund-me \n",  async () => {
 
     mint_token = await createMint(anchor.getProvider().connection, fundraiser, fundraiser.publicKey, null, 6)
 
-    fundraiser_ata = await getOrCreateAssociatedTokenAccount(anchor.getProvider().connection, fundraiser, mint_token, fundraiser.publicKey)
+    fundraiser_ata = (await getOrCreateAssociatedTokenAccount(anchor.getProvider().connection, fundraiser, mint_token, fundraiser.publicKey)).address
 
-    donor_ata = await getOrCreateAssociatedTokenAccount(anchor.getProvider().connection, fundraiser, mint_token, donor.publicKey)
+    donor_ata = (await getOrCreateAssociatedTokenAccount(anchor.getProvider().connection, fundraiser, mint_token, donor.publicKey)).address
 
-    vault_ata = await getOrCreateAssociatedTokenAccount(anchor.getProvider().connection, fundraiser, mint_token, escrow_pda,true)
+    vault_ata = (await getOrCreateAssociatedTokenAccount(anchor.getProvider().connection, fundraiser, mint_token, escrow_pda,true)).address
   })
 
   it("Init Go Fund Escrow!", async () => {
@@ -61,13 +61,13 @@ describe("go-fund-me \n",  async () => {
       fundraiser: fundraiser.publicKey,
       tokenMint: mint_token,
       escrow: escrow_pda,
-      vault: vault_pda,
+      vault: vault_ata,
       systemProgram: anchor.web3.SystemProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     })
     .signers([fundraiser])
-      .rpc({skipPreflight: true})
+      .rpc()
     .then(confirm)
     .then(log)
     
@@ -87,8 +87,8 @@ describe("go-fund-me \n",  async () => {
       .accounts({
         donor: donor.publicKey,
         escrow: escrow_pda,
-        vault: vault_pda,
-        donorAta: donor_ata.address,
+        vault: vault_ata,
+        donorAta: donor_ata,
         tokenMint: mint_token,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -99,7 +99,7 @@ describe("go-fund-me \n",  async () => {
     .then(confirm)
       .then(log)
     
-    const vault = await program.account.campaignEscrow.fetch(vault_ata.address);
+    const vault = await program.account.campaignEscrow.fetch(vault_ata);
 
     console.log(`Donated: ${vault} == ${new anchor.BN(1000000000)}`)
     
