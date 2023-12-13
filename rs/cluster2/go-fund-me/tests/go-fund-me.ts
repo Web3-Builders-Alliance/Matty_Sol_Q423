@@ -2,9 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { GoFundMe } from "../target/types/go_fund_me";
 import { Commitment, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import { createMint, createAccount, mintTo, getOrCreateAssociatedTokenAccount, Account } from "@solana/spl-token"
-
-import { BN } from "bn.js";
+import { createMint, createAccount, mintTo, getOrCreateAssociatedTokenAccount, Account, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token"
 
 const commitment: Commitment = "confirmed"
 
@@ -28,9 +26,9 @@ describe("go-fund-me \n",  async () => {
   let mint_token: PublicKey;
 
   // ATAs
-  let fundraiser_ata: Account; // Donr + mint_token
-  let donor_ata: Account; // Fundraiser + mint token
-  let vault_ata: Account; // Fundraiser + mint token
+  let fundraiser_ata: Account; // Fundraiser + mint_token
+  let donor_ata: Account; // Donor + mint token
+  let vault_ata: Account; // vault pda + mint token
 
   it("Airdrop", async () => {
     await Promise.all([fundraiser, donor].map(async (k) => {
@@ -40,8 +38,8 @@ describe("go-fund-me \n",  async () => {
 
   it("Mint maker/taker tokens", async () => {
     // Create mints and ATAs
-    let [ f] = await Promise.all([fundraiser].map(async(a) => { return await newMintToAta(anchor.getProvider().connection, a) }))
-    mint_token = f.mint
+    mint_token = await createMint(anchor.getProvider().connection, fundraiser, fundraiser.publicKey, null, 6)
+
     fundraiser_ata = await getOrCreateAssociatedTokenAccount(anchor.getProvider().connection, fundraiser, mint_token, fundraiser.publicKey)
 
     donor_ata = await getOrCreateAssociatedTokenAccount(anchor.getProvider().connection, fundraiser, mint_token, donor.publicKey)
@@ -60,6 +58,8 @@ describe("go-fund-me \n",  async () => {
       fundraiserAta: fundraiser_ata.address,
       vault: vault_pda,
       systemProgram: anchor.web3.SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     })
     .signers([fundraiser])
     .rpc()
@@ -83,6 +83,9 @@ describe("go-fund-me \n",  async () => {
         vault: vault_ata.address,
         donorAta: donor_ata.address,
         tokenMint: mint_token,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     })
     .signers([donor])
     .rpc()
@@ -114,13 +117,4 @@ const log = async (signature: string): Promise<string>  => {
 }
 
 
-const newMintToAta = async (connection, minter: Keypair): Promise<{ mint: PublicKey, ata: PublicKey }> => { 
-  const mint = await createMint(connection, minter, minter.publicKey, null, 6)
-  const ata = await createAccount(connection, minter, mint, minter.publicKey)
-  await mintTo(connection, minter, mint, ata, minter, 21e8).then(confirm).then(log);
-  return {
-    mint,
-    ata
-  }
-}
 });

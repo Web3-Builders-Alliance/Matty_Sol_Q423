@@ -6,6 +6,7 @@ declare_id!("J6rEQGR3fFqSHf6TKsRku3r7qmQZ1FHvz7CReoNsczUr");
 #[account]
 pub struct CampaignEscrow {
     pub fundraiser_ata: Pubkey,
+    pub fundraiser: Pubkey,
     //pub vault_ata: Pubkey,
     pub goal_amount: u64,
     pub escrow_bump: u8,
@@ -14,7 +15,7 @@ pub struct CampaignEscrow {
 }
 
 impl Space for CampaignEscrow {
-    const INIT_SPACE:usize = 32  + 8  + 1 + 1 + 8;
+    const INIT_SPACE:usize = 32 * 2 + 8  + 1 + 1 + 8;
 }
 
 #[derive(Accounts)]
@@ -63,7 +64,8 @@ pub struct DonateCampaign<'info> {
 
     //send the seed 
     #[account(
-        seeds = [b"escrow",escrow.fundraiser_ata.key().as_ref()],
+        //mut,
+        seeds = [b"escrow",escrow.fundraiser.key().as_ref()],
         bump = escrow.escrow_bump,
     )]
     pub escrow: Account<'info, CampaignEscrow>,
@@ -103,6 +105,7 @@ pub mod go_fund_me {
         ctx.accounts.escrow.goal_amount = 100;
         ctx.accounts.escrow.escrow_bump = ctx.bumps.escrow;
         ctx.accounts.escrow.vault_bump = ctx.bumps.vault;
+        ctx.accounts.escrow.fundraiser = *ctx.accounts.fundraiser.to_account_info().key;
         ctx.accounts.escrow.fundraiser_ata = *ctx.accounts.fundraiser_ata.to_account_info().key;
         Ok(())
     }
