@@ -19,7 +19,7 @@ describe("go-fund-me \n",  async () => {
   const [fundraiser, donor] = [new Keypair(), new Keypair()];
 
   //PDAs
-  const escrow_pda = PublicKey.findProgramAddressSync([Buffer.from("escrow"), fundraiser.publicKey.toBuffer()], program.programId)[0];
+  const escrow_pda = PublicKey.findProgramAddressSync([Buffer.from("escrow"), fundraiser.publicKey.toBytes()], program.programId)[0];
   const vault_pda = PublicKey.findProgramAddressSync([Buffer.from("vault"), escrow_pda.toBuffer()], program.programId)[0];
 
   // Mints
@@ -30,27 +30,26 @@ describe("go-fund-me \n",  async () => {
   let donor_ata: PublicKey; // Donor + mint token
   let vault_ata: PublicKey; // vault pda + mint token
 
+  const token_decimals = 6;
+
   it("Airdrop", async () => {
     await Promise.all([fundraiser, donor].map(async (k) => {
-      await anchor.getProvider().connection.requestAirdrop(k.publicKey, 100 * anchor.web3.LAMPORTS_PER_SOL).then(confirm).then(log);
+      await provider.connection.requestAirdrop(k.publicKey, 100 * anchor.web3.LAMPORTS_PER_SOL).then(confirm).then(log);
     }))
   });
 
   it("Minting tokens", async () => {
-    // Create mints and ATAs
+  
+    mint_token = await createMint(provider.connection, fundraiser, fundraiser.publicKey,fundraiser.publicKey, token_decimals)
 
-    //const mint = await createMint(connection, minter, minter.publicKey, null, 6)
-  // await getAccount(connection, mint, commitment)
-  //const ata = await createAccount(connection, minter, mint, minter.publicKey)
-  //const signature = await mintTo(connection, minter, mint, ata, minter, 21e8)
+    fundraiser_ata = (await getOrCreateAssociatedTokenAccount(provider.connection, fundraiser, mint_token, fundraiser.publicKey)).address
 
-    mint_token = await createMint(anchor.getProvider().connection, fundraiser, fundraiser.publicKey, null, 6)
+    donor_ata = (await getOrCreateAssociatedTokenAccount(provider.connection, fundraiser, mint_token, donor.publicKey)).address
 
-    fundraiser_ata = (await getOrCreateAssociatedTokenAccount(anchor.getProvider().connection, fundraiser, mint_token, fundraiser.publicKey)).address
-
-    donor_ata = (await getOrCreateAssociatedTokenAccount(anchor.getProvider().connection, fundraiser, mint_token, donor.publicKey)).address
-
-    vault_ata = (await getOrCreateAssociatedTokenAccount(anchor.getProvider().connection, fundraiser, mint_token, escrow_pda,true)).address
+    vault_ata = (await getOrCreateAssociatedTokenAccount(provider.connection, fundraiser, mint_token, escrow_pda, true)).address
+    
+    await mintTo(provider.connection, donor, mint_token, donor_ata, fundraiser, 2 * token_decimals).then(confirm).then(log);
+   
   })
 
   it("Init Go Fund Escrow!", async () => {
@@ -81,9 +80,9 @@ describe("go-fund-me \n",  async () => {
     
   });
 
-  xit("Donate ", async () => {
+  it("Donate ", async () => {
     const tx = await program.methods
-    .donate(new anchor.BN(1000000000))
+    .donate(new anchor.BN(1))
       .accounts({
         donor: donor.publicKey,
         escrow: escrow_pda,
@@ -95,13 +94,13 @@ describe("go-fund-me \n",  async () => {
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     })
     .signers([donor])
-    .rpc()
+    .rpc()//.rpc({skipPreflight: true})
     .then(confirm)
       .then(log)
     
-    const vault = await program.account.campaignEscrow.fetch(vault_ata);
+    //const vault = await program.account.campaignEscrow.fetch(vault_ata);
 
-    console.log(`Donated: ${vault} == ${new anchor.BN(1000000000)}`)
+    //console.log(`Donated: ${vault} == ${new anchor.BN(1000000000)}`)
     
   });
 

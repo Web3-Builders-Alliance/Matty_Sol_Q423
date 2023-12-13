@@ -5,17 +5,14 @@ declare_id!("J6rEQGR3fFqSHf6TKsRku3r7qmQZ1FHvz7CReoNsczUr");
 
 #[account]
 pub struct CampaignEscrow {
-    //pub fundraiser_ata: Pubkey,
     pub fundraiser: Pubkey,
-    //pub vault_ata: Pubkey,
     pub goal_amount: u64,
     pub escrow_bump: u8,
-    //pub vault_bump: u8,
     
 }
 
 impl Space for CampaignEscrow {
-    const INIT_SPACE:usize = 32  + 8  + 1 + 8;
+    const INIT_SPACE:usize = 8 + 32  + 8  + 1 ;
 }
 
 #[derive(Accounts)]
@@ -33,7 +30,7 @@ pub struct InitCampaign<'info> {
     pub escrow: Account<'info, CampaignEscrow>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = fundraiser,
         associated_token::mint = token_mint,
         associated_token::authority = escrow,
@@ -63,8 +60,6 @@ pub struct DonateCampaign<'info> {
 
     #[account(
         mut,
-        //seeds = [b"vault", escrow.key().as_ref()],
-        //bump = escrow.vault_bump,
         token::mint = token_mint,
         token::authority = escrow
     )]
