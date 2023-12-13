@@ -5,30 +5,23 @@ declare_id!("J6rEQGR3fFqSHf6TKsRku3r7qmQZ1FHvz7CReoNsczUr");
 
 #[account]
 pub struct CampaignEscrow {
-    pub fundraiser_ata: Pubkey,
+    //pub fundraiser_ata: Pubkey,
     pub fundraiser: Pubkey,
     //pub vault_ata: Pubkey,
     pub goal_amount: u64,
     pub escrow_bump: u8,
-    pub vault_bump: u8,
+    //pub vault_bump: u8,
     
 }
 
 impl Space for CampaignEscrow {
-    const INIT_SPACE:usize = 32 * 2 + 8  + 1 + 1 + 8;
+    const INIT_SPACE:usize = 32  + 8  + 1 + 8;
 }
 
 #[derive(Accounts)]
 pub struct InitCampaign<'info> {
     #[account(mut)]
     pub fundraiser: Signer<'info>,
-
-    #[account(
-        mut,
-        token::mint = token_mint,
-        token::authority = fundraiser,
-    )]
-    pub fundraiser_ata: Account<'info, TokenAccount>,
 
     #[account(
         init,
@@ -42,10 +35,8 @@ pub struct InitCampaign<'info> {
     #[account(
         init,
         payer = fundraiser,
-        seeds = [b"vault", escrow.key().as_ref()],
-        bump,
-        token::mint = token_mint,
-        token::authority = escrow,
+        associated_token::mint = token_mint,
+        associated_token::authority = escrow,
     )]
     pub vault: Account<'info, TokenAccount>,
     pub token_mint: Account<'info, Mint>,
@@ -72,8 +63,8 @@ pub struct DonateCampaign<'info> {
 
     #[account(
         mut,
-        seeds = [b"vault", escrow.key().as_ref()],
-        bump = escrow.vault_bump,
+        //seeds = [b"vault", escrow.key().as_ref()],
+        //bump = escrow.vault_bump,
         token::mint = token_mint,
         token::authority = escrow
     )]
@@ -104,9 +95,8 @@ pub mod go_fund_me {
     pub fn initialize_campaign(ctx: Context<InitCampaign>) -> Result<()> {
         ctx.accounts.escrow.goal_amount = 100;
         ctx.accounts.escrow.escrow_bump = ctx.bumps.escrow;
-        ctx.accounts.escrow.vault_bump = ctx.bumps.vault;
-        ctx.accounts.escrow.fundraiser = *ctx.accounts.fundraiser.to_account_info().key;
-        ctx.accounts.escrow.fundraiser_ata = *ctx.accounts.fundraiser_ata.to_account_info().key;
+        ctx.accounts.escrow.fundraiser = ctx.accounts.fundraiser.to_account_info().key();
+
         Ok(())
     }
 

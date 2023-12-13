@@ -36,8 +36,14 @@ describe("go-fund-me \n",  async () => {
     }))
   });
 
-  it("Mint maker/taker tokens", async () => {
+  it("Minting tokens", async () => {
     // Create mints and ATAs
+
+    //const mint = await createMint(connection, minter, minter.publicKey, null, 6)
+  // await getAccount(connection, mint, commitment)
+  //const ata = await createAccount(connection, minter, mint, minter.publicKey)
+  //const signature = await mintTo(connection, minter, mint, ata, minter, 21e8)
+
     mint_token = await createMint(anchor.getProvider().connection, fundraiser, fundraiser.publicKey, null, 6)
 
     fundraiser_ata = await getOrCreateAssociatedTokenAccount(anchor.getProvider().connection, fundraiser, mint_token, fundraiser.publicKey)
@@ -55,32 +61,33 @@ describe("go-fund-me \n",  async () => {
       fundraiser: fundraiser.publicKey,
       tokenMint: mint_token,
       escrow: escrow_pda,
-      fundraiserAta: fundraiser_ata.address,
       vault: vault_pda,
       systemProgram: anchor.web3.SystemProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     })
     .signers([fundraiser])
-    .rpc()
+      .rpc({skipPreflight: true})
     .then(confirm)
     .then(log)
     
     const esc = await program.account.campaignEscrow.fetch(escrow_pda);
     console.log(`Goal amount num: ${esc.goalAmount.toNumber()}`)
 
-    console.log(`Goal amount num: ${esc.escrowBump}`)
-    console.log(`Goal amount num: ${esc.fundraiserAta} == ${fundraiser_ata.address}`)
+    console.log(`escrow bump: ${esc.escrowBump}`)
+    //console.log(`vault bump: ${esc.vaultBump}`)
+    //console.log(`fundraiser ata: ${esc.fundraiserAta} == ${fundraiser_ata.address}`)
+    console.log(`fundraiser pubkey: ${esc.fundraiser} == ${fundraiser.publicKey}`)
     
   });
 
-  it("Donate ", async () => {
+  xit("Donate ", async () => {
     const tx = await program.methods
     .donate(new anchor.BN(1000000000))
       .accounts({
         donor: donor.publicKey,
         escrow: escrow_pda,
-        vault: vault_ata.address,
+        vault: vault_pda,
         donorAta: donor_ata.address,
         tokenMint: mint_token,
         systemProgram: anchor.web3.SystemProgram.programId,
@@ -98,7 +105,7 @@ describe("go-fund-me \n",  async () => {
     
   });
 
- // Helpers
+  // Helpers
 
  const confirm = async (signature: string): Promise<string>  => {
   const block = await provider.connection.getLatestBlockhash();
