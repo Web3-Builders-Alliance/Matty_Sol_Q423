@@ -48,7 +48,7 @@ describe("go-fund-me \n",  async () => {
 
     vault_ata = (await getOrCreateAssociatedTokenAccount(provider.connection, fundraiser, mint_token, escrow_pda, true)).address
     
-    await mintTo(provider.connection, donor, mint_token, donor_ata, fundraiser, 2 * token_decimals).then(confirm).then(log);
+    await mintTo(provider.connection, donor, mint_token, donor_ata, fundraiser, 100 * token_decimals).then(confirm).then(log);
    
   })
 
@@ -82,7 +82,7 @@ describe("go-fund-me \n",  async () => {
 
   it("Donate ", async () => {
     const tx = await program.methods
-    .donate(new anchor.BN(1))
+    .donate(new anchor.BN(160))
       .accounts({
         donor: donor.publicKey,
         escrow: escrow_pda,
@@ -98,12 +98,35 @@ describe("go-fund-me \n",  async () => {
     .then(confirm)
       .then(log)
     
-    //const vault = await program.account.campaignEscrow.fetch(vault_ata);
+    const vault = (await provider.connection.getTokenAccountBalance(vault_ata)).value.amount;
 
-    //console.log(`Donated: ${vault} == ${new anchor.BN(1000000000)}`)
+    console.log(`Donated: ${vault} == ${new anchor.BN(60)}`)
     
   });
 
+  it("Release funds to fundraiser ", async () => {
+    const tx = await program.methods
+    .releaseFund()
+      .accounts({
+        fundraiser: fundraiser.publicKey,
+        escrow: escrow_pda,
+        vault: vault_ata,
+        fundraiserAta: fundraiser_ata,
+        tokenMint: mint_token,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    })
+    .signers([fundraiser])
+    .rpc()//.rpc({skipPreflight: true})
+    .then(confirm)
+      .then(log)
+    
+    const vault = (await provider.connection.getTokenAccountBalance(vault_ata)).value.amount;
+
+    console.log(`Donated: ${vault} == ${new anchor.BN(60)}`)
+    
+  });
   // Helpers
 
  const confirm = async (signature: string): Promise<string>  => {
