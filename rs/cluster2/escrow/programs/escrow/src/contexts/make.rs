@@ -52,12 +52,15 @@ pub struct Make<'info> {
 
 impl <'info> Make<'info> {
 
-    pub fn make(&mut self, seed: u64,deposit: u64, recieve_amount: u64, bumps: &MakeBumps) -> Result<()> {
-        self.escrow_record.escrow_seed = seed;
-        self.escrow_record.escrow_bump = bumps.escrow_record;
-        self.escrow_record.mint_x = self.mint_x.key();
-        self.escrow_record.mint_y = self.mint_y.key();
-        self.escrow_record.recieve_amount = recieve_amount;
+    pub fn make(&mut self, escrow_seed: u64,deposit: u64, recieve_amount: u64, bumps: &MakeBumps) -> Result<()> {
+        self.escrow_record.set_inner(
+            EscorwRecord {
+                escrow_seed,
+                escrow_bump: bumps.escrow_record,
+                mint_x: self.mint_x.key(),
+                mint_y: self.mint_y.key(),
+                recieve_amount
+            });
 
         self.transfer(deposit)
         
