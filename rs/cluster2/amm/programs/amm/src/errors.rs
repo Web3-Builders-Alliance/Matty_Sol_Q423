@@ -11,11 +11,11 @@ pub enum AmmError {
     DefaultError,
     #[msg("Slippage Limit Exceeded Error")]
     SlippageLimitExceeded,
-    #[msg("Pool locked Error")]
+    #[msg("Pool locked ")]
     PoolLocked,
-    #[msg("Pool locked Error")]
+    #[msg("Zero Balance ")]
     ZeroBalance,
-    #[msg("Pool locked Error")]
+    #[msg("Offer expired")]
     OfferExpired,
     #[msg("I am sorry. You are Rugged.")]
     Rugged

@@ -56,7 +56,7 @@ describe("AMM", () => {
   
     mintX = await createMint(provider.connection, user, user.publicKey, null, token_decimals)
     mintY = await createMint(provider.connection, user, user.publicKey, null, token_decimals)
-    mintLp = await createMint(provider.connection, user, user.publicKey, null, token_decimals)
+    mintLp = await createMint(provider.connection, user, auth, null, token_decimals)
 
     userXToken = (await getOrCreateAssociatedTokenAccount(provider.connection, user, mintX, user.publicKey)).address
     userYToken = (await getOrCreateAssociatedTokenAccount(provider.connection, user, mintY, user.publicKey)).address
@@ -70,11 +70,6 @@ describe("AMM", () => {
     //We also dont mint to userLpToken since only the vault do that in rust
     await mintTo(provider.connection, user, mintX, userXToken, user, 10000 * token_decimals).then(confirm).then(log);
     await mintTo(provider.connection, user, mintY, userYToken, user, 10000 * token_decimals).then(confirm).then(log);
-
-    //await mintTo(provider.connection, user, mintX, vaultXToken, auth, 10000 * token_decimals).then(confirm).then(log);
-    //await mintTo(provider.connection, user, mintY, vaultYToken, auth, 10000 * token_decimals).then(confirm).then(log);
-
-    //await mintTo(provider.connection, user, mintLp, vaultYToken, auth, 10000 * token_decimals).then(confirm).then(log);
    
   })
 
@@ -98,20 +93,43 @@ describe("AMM", () => {
       .then(log);
   });
 
-  xit("Provide liquidity .....!", async () => {
+  it("Provide liquidity .....!", async () => {
     await program.methods.deposit(lp_recieve_amt,x_max,y_max,expiration)//user.Publikey is just an authority to be saved in config(to update fees later). Not auth of PDA
       .accounts({
-        config,
-        auth,
         user: user.publicKey,
         mintX,
         mintY,
-        lpMint: lp_mint_pda,
+        lpMint: mintLp,
+        auth,
+        config,
         vaultX: vaultXToken,
-        vaultY: vaultYToken,
         userVaultX: userXToken,
+        vaultY: vaultYToken,
         userVaultY: userYToken,
         userLpToken,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      }).signers([user])
+      .rpc()
+      .then(confirm)
+      .then(log);
+  });
+
+  it("Withdraw liquidity .....!", async () => {
+    await program.methods.withdraw(lp_recieve_amt,x_min,y_min,expiration)//user.Publikey is just an authority to be saved in config(to update fees later). Not auth of PDA
+      .accounts({
+        user: user.publicKey,
+        lpMint: mintLp,
+        mintX,
+        mintY,
+        userLpVault: userLpToken,
+        userXVault: userXToken,
+        userYVault: userYToken,
+        lpXVault: vaultXToken,
+        lpYVault: vaultYToken,
+        auth,
+        config,
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,

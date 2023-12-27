@@ -23,14 +23,14 @@ pub struct Withdraw <'info> {
     #[account(
         mut,
         associated_token::mint = mint_x,
-        associated_token::authority = auth
+        associated_token::authority = user
     )]
     pub user_x_vault: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         mut,
         associated_token::mint = mint_y,
-        associated_token::authority = auth
+        associated_token::authority = user
     )]
     pub user_y_vault: InterfaceAccount<'info, TokenAccount>,
 
@@ -76,7 +76,7 @@ impl <'info> Withdraw <'info> {
          expiration: i64)-> Result<()>{
 
         //assert amounts not 0, 
-        assert_not_expired!(expiration);
+        //assert_not_expired!(expiration);
         assert_not_locked!(self.config.locked);
         assert_non_zero!([lp_amount,x_min,y_min]);
 
