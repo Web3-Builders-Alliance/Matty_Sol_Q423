@@ -19,6 +19,7 @@ describe("AMM", () => {
 
   const seed = new anchor.BN(randomBytes(8));
   let fee: number = 100;//1%
+  let updatedFee: number = 110;//1%
 
   let lp_recieve_amt = new anchor.BN(1000);
   let x_max = new anchor.BN(1200);
@@ -87,6 +88,17 @@ describe("AMM", () => {
         systemProgram: SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      }).signers([user])
+      .rpc()
+      .then(confirm)
+      .then(log);
+  });
+
+  it("Update Fee .....!", async () => {
+    await program.methods.updateFee(updatedFee)//user.Publikey is just an authority to be saved in config(to update fees later). Not auth of PDA
+      .accounts({
+        signer: user.publicKey,
+        config
       }).signers([user])
       .rpc()
       .then(confirm)
