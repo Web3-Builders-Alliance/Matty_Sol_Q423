@@ -5,21 +5,32 @@ import { Commitment, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, SystemPro
 import { createMint, createAccount, mintTo, getOrCreateAssociatedTokenAccount, Account, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token"
 import { randomBytes } from "crypto";
 import { findProgramAddressSync } from "@project-serum/anchor/dist/cjs/utils/pubkey";
+import { use } from "chai";
 
 const commitment: Commitment = "confirmed"
 
-describe("escrow", () => {
+describe("AMM", () => {
   // Configure the client to use the local cluster.
   
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
-  const program = anchor.workspace.Escrow as Program<Amm>;
+  const program = anchor.workspace.Amm as Program<Amm>;
 
   const seed = new anchor.BN(randomBytes(8));
+  let fee: number = 100;//1%
+
+  let lp_recieve_amt = new anchor.BN(1000);
+  let x_max = new anchor.BN(1200);
+  let y_max = new anchor.BN(1200);
+  let x_min = new anchor.BN(1100);
+  let y_min = new anchor.BN(1100);
+  let expiration = new anchor.BN(221100);
   
   const user = new Keypair();
-  const config = findProgramAddressSync([Buffer.from("config"),seed.toBuffer('le', 8)], program.programId)[0];
+  const config = findProgramAddressSync([Buffer.from("config"), seed.toBuffer('le', 8)], program.programId)[0];
+  const lp_mint_pda = findProgramAddressSync([Buffer.from("lp"), config.toBuffer()], program.programId)[0];
+  const auth = findProgramAddressSync([Buffer.from("auth")], program.programId)[0];
   
    // Mints
   let mintX: PublicKey;
@@ -27,11 +38,11 @@ describe("escrow", () => {
   let mintLp: PublicKey;
 
    // ATAs
-   let userXToken: PublicKey; // maker mint + maker
-   let userYToken: PublicKey; // taker mint + maker
-   let userLpToken: PublicKey; // taker mint + taker
-   let vaultXToken: PublicKey; // maker mint + taker
-   let vaultYToken: PublicKey; //maker mint + vault_pda only storing maker token so it can be sent back to taker once taker deposits to maker 
+   let userXToken: PublicKey; 
+   let userYToken: PublicKey;
+   let userLpToken: PublicKey; 
+   let vaultXToken: PublicKey;
+   let vaultYToken: PublicKey; 
   
   const token_decimals = 6;
   
@@ -41,23 +52,74 @@ describe("escrow", () => {
     }))
   });
 
-  // it("Minting tokens", async () => {
+  it("Minting tokens", async () => {
   
-  //   mint_x = await createMint(provider.connection, maker, maker.publicKey, null, token_decimals)
-  //   mint_y = await createMint(provider.connection, taker, taker.publicKey,null, token_decimals)
+    mintX = await createMint(provider.connection, user, user.publicKey, null, token_decimals)
+    mintY = await createMint(provider.connection, user, user.publicKey, null, token_decimals)
+    mintLp = await createMint(provider.connection, user, user.publicKey, null, token_decimals)
 
-  //   makerXAta = (await getOrCreateAssociatedTokenAccount(provider.connection, maker, mint_x, maker.publicKey)).address
-  //   makerYAta = (await getOrCreateAssociatedTokenAccount(provider.connection, maker, mint_y, maker.publicKey)).address
+    userXToken = (await getOrCreateAssociatedTokenAccount(provider.connection, user, mintX, user.publicKey)).address
+    userYToken = (await getOrCreateAssociatedTokenAccount(provider.connection, user, mintY, user.publicKey)).address
+    userLpToken = (await getOrCreateAssociatedTokenAccount(provider.connection, user, mintLp, user.publicKey)).address
 
-  //   takerXAta = (await getOrCreateAssociatedTokenAccount(provider.connection, taker, mint_x, taker.publicKey)).address
-  //   takerYAta = (await getOrCreateAssociatedTokenAccount(provider.connection, taker, mint_y, taker.publicKey)).address
-
-  //   vault_ata = (await getAssociatedTokenAddressSync(mint_x, escrow_pda, true));
+    vaultXToken = (await getOrCreateAssociatedTokenAccount(provider.connection, user, mintX, auth, true)).address
+    vaultYToken = (await getOrCreateAssociatedTokenAccount(provider.connection, user, mintY, auth, true)).address
     
-  //   await mintTo(provider.connection, maker, mint_x, makerXAta, maker, 10000 * token_decimals).then(confirm).then(log);
-  //   await mintTo(provider.connection, taker, mint_y, takerYAta, taker, 10000 * token_decimals).then(confirm).then(log);
+    //We dont mint to vault lp b/c we can directly mint to user account in RUST
+    //We dont mint to valutX or Y token b/c the user will send them. 
+    //We also dont mint to userLpToken since only the vault do that in rust
+    await mintTo(provider.connection, user, mintX, userXToken, user, 10000 * token_decimals).then(confirm).then(log);
+    await mintTo(provider.connection, user, mintY, userYToken, user, 10000 * token_decimals).then(confirm).then(log);
+
+    //await mintTo(provider.connection, user, mintX, vaultXToken, auth, 10000 * token_decimals).then(confirm).then(log);
+    //await mintTo(provider.connection, user, mintY, vaultYToken, auth, 10000 * token_decimals).then(confirm).then(log);
+
+    //await mintTo(provider.connection, user, mintLp, vaultYToken, auth, 10000 * token_decimals).then(confirm).then(log);
    
-  // })
+  })
+
+  it("Init AMM .....!", async () => {
+    await program.methods.initialize(seed,fee, user.publicKey)//user.Publikey is just an authority to be saved in config(to update fees later). Not auth of PDA
+      .accounts({
+        config,
+        auth,
+        initializer: user.publicKey,
+        mintX,
+        mintY,
+        lpMint: lp_mint_pda,
+        valutX: vaultXToken,
+        valutY: vaultYToken,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      }).signers([user])
+      .rpc()
+      .then(confirm)
+      .then(log);
+  });
+
+  xit("Provide liquidity .....!", async () => {
+    await program.methods.deposit(lp_recieve_amt,x_max,y_max,expiration)//user.Publikey is just an authority to be saved in config(to update fees later). Not auth of PDA
+      .accounts({
+        config,
+        auth,
+        user: user.publicKey,
+        mintX,
+        mintY,
+        lpMint: lp_mint_pda,
+        vaultX: vaultXToken,
+        vaultY: vaultYToken,
+        userVaultX: userXToken,
+        userVaultY: userYToken,
+        userLpToken,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      }).signers([user])
+      .rpc()
+      .then(confirm)
+      .then(log);
+  });
 
   const confirm = async (signature: string): Promise<string>  => {
     const block = await provider.connection.getLatestBlockhash();

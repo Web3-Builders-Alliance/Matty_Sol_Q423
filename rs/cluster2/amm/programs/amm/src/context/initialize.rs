@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint,TokenAccount,TokenInterface, TransferChecked, transfer_checked};
+use anchor_spl::token_interface::{Mint,TokenAccount,TokenInterface};
 use anchor_spl::associated_token::AssociatedToken;
 
 use crate::errors::AmmError;
@@ -37,16 +37,14 @@ pub struct Initialize <'info> {
     pub lp_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
-        init,
-        payer = initializer,
+        mut,
         associated_token::mint = mint_x,
         associated_token::authority = auth
     )]
     pub valut_x: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
-        init,
-        payer = initializer,
+        mut,
         associated_token::mint = mint_y,
         associated_token::authority = auth
     )]
@@ -74,16 +72,17 @@ impl <'info> Initialize <'info> {
         Config{
             seed,
             authority,
-            bump: bumps.config,
             mint_x: self.mint_x.key(),
             mint_y: self.mint_y.key(),
             locked: false,
             lp_bump: bumps.lp_mint,
             auth_bump: bumps.auth,
+            bump: bumps.config,
             fee
         }
         
        );
+       Clock::get()?.unix_timestamp;
 
         Ok(())
 

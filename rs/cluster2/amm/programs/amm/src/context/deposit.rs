@@ -61,6 +61,8 @@ pub struct Deposit <'info> {
     pub user_vault_y: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
+        init_if_needed,
+        payer = user,
         associated_token::mint = lp_mint,
         associated_token::authority = user,
     )]

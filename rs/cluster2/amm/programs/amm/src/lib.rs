@@ -10,13 +10,12 @@ pub mod helpers;
 pub use state::*;
 pub use context::*;
 
-
 #[program]
 pub mod amm {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, seed: u64, fee: u16, auth: Option<Pubkey>) -> Result<()> {
-        ctx.accounts.init(&ctx.bumps,seed,fee,auth)
+    pub fn initialize(ctx: Context<Initialize>, seed: u64, fee: u16, config_authority: Option<Pubkey>) -> Result<()> {
+        ctx.accounts.init(&ctx.bumps,seed,fee,config_authority)
 
     }
 
@@ -25,8 +24,8 @@ pub mod amm {
 
     }
 
-    pub fn deposit(ctx: Context<Deposit>, deposit_amount: u64, x_max: u64, y_max: u64, expiration: i64) -> Result<()> {
-        ctx.accounts.deposit_tokens(deposit_amount, x_max, y_max, expiration)
+    pub fn deposit(ctx: Context<Deposit>, lp_recievie_amount: u64, x_max: u64, y_max: u64, expiration: i64) -> Result<()> {
+        ctx.accounts.deposit_tokens(lp_recievie_amount, x_max, y_max, expiration)
 
     }
 
