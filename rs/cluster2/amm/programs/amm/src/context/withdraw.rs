@@ -9,6 +9,12 @@ pub struct Withdraw <'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
+    #[account(
+        mut,
+        seeds = [b"lp",config.key().as_ref()],
+        bump= config.lp_bump,
+        
+    )]
     pub lp_mint: InterfaceAccount<'info, Mint>,
     pub mint_x: InterfaceAccount<'info, Mint>,
     pub mint_y: InterfaceAccount<'info, Mint>,
@@ -75,8 +81,8 @@ impl <'info> Withdraw <'info> {
          y_min: u64,
          expiration: i64)-> Result<()>{
 
-        //assert amounts not 0, 
-        //assert_not_expired!(expiration);
+        
+        assert_not_expired!(expiration);
         assert_not_locked!(self.config.locked);
         assert_non_zero!([lp_amount,x_min,y_min]);
 
@@ -119,10 +125,17 @@ impl <'info> Withdraw <'info> {
             from,
             mint,
             to,
-            authority: self.user.to_account_info(),
+            authority: self.auth.to_account_info(),
         };
+        let seeds = &[
+            &b"auth" [..],
+            &[self.config.auth_bump],
+            ];
+        let signer_seeds= & [&seeds[..]];
+        
+        let cpi_program = self.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, accounts, signer_seeds);
 
-        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(),accounts);
         transfer_checked(cpi_ctx, amount, decimal)
 
     }

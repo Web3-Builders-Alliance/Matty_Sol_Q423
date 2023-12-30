@@ -25,8 +25,8 @@ pub mod amm {
     }
 
     pub fn deposit(ctx: Context<Deposit>, lp_recievie_amount: u64, x_max: u64, y_max: u64, expiration: i64) -> Result<()> {
-        //ctx.accounts.deposit_tokens(lp_recievie_amount, x_max, y_max, expiration)
-        Ok(())
+        ctx.accounts.deposit_tokens(lp_recievie_amount, x_max, y_max, expiration)
+        //Ok(())
 
     }
 

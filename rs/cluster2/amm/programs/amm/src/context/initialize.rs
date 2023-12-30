@@ -82,7 +82,7 @@ impl <'info> Initialize <'info> {
         }
         
        );
-       Clock::get()?.unix_timestamp;
+       //Clock::get()?.unix_timestamp;
 
         Ok(())
 

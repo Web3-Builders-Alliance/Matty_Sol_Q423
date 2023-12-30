@@ -6,13 +6,14 @@ import { createMint, createAccount, mintTo, getOrCreateAssociatedTokenAccount, A
 import { randomBytes } from "crypto";
 import { findProgramAddressSync } from "@project-serum/anchor/dist/cjs/utils/pubkey";
 import { use } from "chai";
-
-const commitment: Commitment = "confirmed"
+import { getAccount } from "@solana/spl-token";
 
 describe("AMM", () => {
   // Configure the client to use the local cluster.
   
   const provider = anchor.AnchorProvider.env();
+  const connection = provider.connection;
+
   anchor.setProvider(provider);
 
   const program = anchor.workspace.Amm as Program<Amm>;
@@ -22,21 +23,20 @@ describe("AMM", () => {
   let updatedFee: number = 110;//1%
 
   let lp_recieve_amt = new anchor.BN(1000);
-  let x_max = new anchor.BN(1200);
-  let y_max = new anchor.BN(1200);
-  let x_min = new anchor.BN(1100);
-  let y_min = new anchor.BN(1100);
-  let expiration = new anchor.BN(221100);
+  let x_max = new anchor.BN(14000);
+  let y_max = new anchor.BN(16000);
+  let x_min = new anchor.BN(10000);
+  let y_min = new anchor.BN(8000);
   
   const user = new Keypair();
-  const config = findProgramAddressSync([Buffer.from("config"), seed.toBuffer('le', 8)], program.programId)[0];
+  const config = findProgramAddressSync([Buffer.from("config"), seed.toBuffer().reverse()], program.programId)[0];
   const lp_mint_pda = findProgramAddressSync([Buffer.from("lp"), config.toBuffer()], program.programId)[0];
   const auth = findProgramAddressSync([Buffer.from("auth")], program.programId)[0];
   
    // Mints
   let mintX: PublicKey;
   let mintY: PublicKey;
-  let mintLp: PublicKey;
+  //let mintLp: PublicKey;
 
    // ATAs
    let userXToken: PublicKey; 
@@ -46,31 +46,49 @@ describe("AMM", () => {
    let vaultYToken: PublicKey; 
   
   const token_decimals = 6;
+
+  const currentUnixTimestamp = Math.floor(Date.now() / 1000);
+  let expiration = new anchor.BN(currentUnixTimestamp);
+
+
   
   it("Airdrop", async () => {
     await Promise.all([user].map(async (k) => {
-      await provider.connection.requestAirdrop(k.publicKey, 100 * anchor.web3.LAMPORTS_PER_SOL).then(confirm).then(log);
+      await connection.requestAirdrop(k.publicKey, 100 * anchor.web3.LAMPORTS_PER_SOL).then(confirm).then(log);
     }))
   });
 
   it("Minting tokens", async () => {
   
-    mintX = await createMint(provider.connection, user, user.publicKey, null, token_decimals)
-    mintY = await createMint(provider.connection, user, user.publicKey, null, token_decimals)
-    mintLp = await createMint(provider.connection, user, auth, null, token_decimals)
+    mintX = await createMint(connection, user, user.publicKey, null, token_decimals)
+    mintY = await createMint(connection, user, user.publicKey, null, token_decimals)
+    //mintLp = await createMint(connection, user, auth, null, token_decimals)
 
-    userXToken = (await getOrCreateAssociatedTokenAccount(provider.connection, user, mintX, user.publicKey)).address
-    userYToken = (await getOrCreateAssociatedTokenAccount(provider.connection, user, mintY, user.publicKey)).address
-    userLpToken = (await getOrCreateAssociatedTokenAccount(provider.connection, user, mintLp, user.publicKey)).address
+    userXToken = (await getOrCreateAssociatedTokenAccount(connection, user, mintX, user.publicKey)).address
+    userYToken = (await getOrCreateAssociatedTokenAccount(connection, user, mintY, user.publicKey)).address
+    userLpToken = getAssociatedTokenAddressSync(lp_mint_pda,user.publicKey,false)
 
-    vaultXToken = (await getOrCreateAssociatedTokenAccount(provider.connection, user, mintX, auth, true)).address
-    vaultYToken = (await getOrCreateAssociatedTokenAccount(provider.connection, user, mintY, auth, true)).address
+    vaultXToken = (await getOrCreateAssociatedTokenAccount(connection, user, mintX, auth, true)).address
+    vaultYToken = (await getOrCreateAssociatedTokenAccount(connection, user, mintY, auth, true)).address
     
     //We dont mint to vault lp b/c we can directly mint to user account in RUST
     //We dont mint to valutX or Y token b/c the user will send them. 
     //We also dont mint to userLpToken since only the vault do that in rust
-    await mintTo(provider.connection, user, mintX, userXToken, user, 10000 * token_decimals).then(confirm).then(log);
-    await mintTo(provider.connection, user, mintY, userYToken, user, 10000 * token_decimals).then(confirm).then(log);
+    await mintTo(connection, user, mintX, userXToken, user, 20000 * token_decimals).then(confirm).then(log);
+    await mintTo(connection, user, mintY, userYToken, user, 10000 * token_decimals).then(confirm).then(log);
+
+    const userXTokenAmount = await getAccount(connection, userXToken);
+    const userYTokenAmount = await getAccount(connection, userYToken);
+    //const userLpAmount = await getAccount(connection, userLpToken);
+    const vaultXTokenAmount = await getAccount(connection, vaultXToken);
+    const vaultYTokenAmount = await getAccount(connection, vaultYToken);
+    
+    console.log("userXTokenAmount: ", userXTokenAmount.amount);
+    console.log("userYTokenAmount: ", userYTokenAmount.amount);
+    //console.log("userLpAmount: ", userLpAmount.amount);
+    console.log("vaultXTokenAmount: ", vaultXTokenAmount.amount);
+    console.log("vaultYTokenAmount: ", vaultYTokenAmount.amount);
+
    
   })
 
@@ -92,6 +110,13 @@ describe("AMM", () => {
       .rpc()
       .then(confirm)
       .then(log);
+    
+    //const configObj = await getAccount(connection, userYToken);
+    const configObj = await connection.getAccountInfo(config);
+    const data = Buffer.from(configObj.data).toString();//TODO Deserlalize 
+
+
+      console.log("Config obj: ", data);
   });
 
   it("Update Fee .....!", async () => {
@@ -111,7 +136,7 @@ describe("AMM", () => {
         user: user.publicKey,
         mintX,
         mintY,
-        lpMint: mintLp,
+        lpMint: lp_mint_pda,
         auth,
         config,
         vaultX: vaultXToken,
@@ -126,13 +151,25 @@ describe("AMM", () => {
       .rpc()
       .then(confirm)
       .then(log);
+    
+      const userXTokenAmount = await getAccount(connection, userXToken);
+      const userYTokenAmount = await getAccount(connection, userYToken);
+      const userLpAmount = await getAccount(connection, userLpToken);
+      const vaultXTokenAmount = await getAccount(connection, vaultXToken);
+      const vaultYTokenAmount = await getAccount(connection, vaultYToken);
+    
+      console.log("userXTokenAmount: ", userXTokenAmount.amount);
+      console.log("userYTokenAmount: ", userYTokenAmount.amount);
+      console.log("userLpAmount: ", userLpAmount.amount);
+      console.log("vaultXTokenAmount: ", vaultXTokenAmount.amount);
+      console.log("vaultYTokenAmount: ", vaultYTokenAmount.amount);
   });
 
   it("Withdraw liquidity .....!", async () => {
     await program.methods.withdraw(lp_recieve_amt,x_min,y_min,expiration)//user.Publikey is just an authority to be saved in config(to update fees later). Not auth of PDA
       .accounts({
         user: user.publicKey,
-        lpMint: mintLp,
+        lpMint: lp_mint_pda,
         mintX,
         mintY,
         userLpVault: userLpToken,
@@ -149,11 +186,24 @@ describe("AMM", () => {
       .rpc()
       .then(confirm)
       .then(log);
+    
+      
+      const userXTokenAmount = await getAccount(connection, userXToken);
+      const userYTokenAmount = await getAccount(connection, userYToken);
+      const userLpAmount = await getAccount(connection, userLpToken);
+      const vaultXTokenAmount = await getAccount(connection, vaultXToken);
+      const vaultYTokenAmount = await getAccount(connection, vaultYToken);
+    
+      console.log("userXTokenAmount: ", userXTokenAmount.amount);
+      console.log("userYTokenAmount: ", userYTokenAmount.amount);
+      console.log("userLpAmount: ", userLpAmount.amount);
+      console.log("vaultXTokenAmount: ", vaultXTokenAmount.amount);
+      console.log("vaultYTokenAmount: ", vaultYTokenAmount.amount);
   });
 
   const confirm = async (signature: string): Promise<string>  => {
-    const block = await provider.connection.getLatestBlockhash();
-    await provider.connection.confirmTransaction({
+    const block = await connection.getLatestBlockhash();
+    await connection.confirmTransaction({
       signature,
       ...block
     });
