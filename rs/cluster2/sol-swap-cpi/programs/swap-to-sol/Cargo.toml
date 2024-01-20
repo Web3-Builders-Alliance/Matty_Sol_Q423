@@ -1,5 +1,5 @@
 [package]
-name = "swap-to-sol"
+name = "nft-mint"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"

@@ -1,14 +1,14 @@
 [features]
 seeds = false
 skip-lint = false
-[programs.mainnet]
+[programs.devnet]
 swap_to_sol = "5XgQemzvKnPyfgpdisFzexL7VEvWcj4Tng5rq84YrsgY"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "mainnet"
+cluster = "devnet"
 wallet = "/Users/siong/.config/solana/id.json"
 
 [scripts]
@@ -18,7 +18,7 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 cli/**/*.ts"
 startup_wait = 10000
 
 [test.validator]
-url = "https://api.mainnet-beta.solana.com"
+url = "https://api.devnet.solana.com"
 
 [[test.validator.clone]]
 address = "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"

@@ -2,14 +2,20 @@
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "swap-to-sol": "ts-node cli/swap-to-sol.ts"
+    "nft_mint": "ts-node cli/nft_mint.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
+    "@metaplex-foundation/mpl-inscription": "^0.8.0",
     "@solana/spl-token": "^0.2",
-    "node-fetch": "^2.6.7"
+    "node-fetch": "^2.6.7",
+    "ts-node": "^10.9.1"
   },
   "devDependencies": {
+    "@metaplex-foundation/mpl-token-metadata": "3.1.1",
+    "@metaplex-foundation/umi": "^0.8.10",
+    "@metaplex-foundation/umi-bundle-defaults": "^0.9.0",
+    "@metaplex-foundation/umi-uploader-bundlr": "^0.8.10",
     "@solana/spl-token": "^0.3.7",
     "@types/bn.js": "^5.1.0",
     "@types/chai": "^4.3.0",
