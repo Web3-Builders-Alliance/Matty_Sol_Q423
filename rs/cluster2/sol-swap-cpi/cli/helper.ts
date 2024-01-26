@@ -31,7 +31,7 @@ export const wallet = NodeWallet.local();
 
 //console.log("Wallet: ", wallet.publicKey.toString());
 
-export const connection = new Connection("https://api.devnet.solana.com","processed" as Commitment);
+export const connection = new Connection("https://api.mainnet-beta.solana.com","processed" as Commitment);
 export const provider = new anchor.AnchorProvider(connection, wallet, options);
 
 //export const connection = new Connection(process.env.RPC_URL);

@@ -7,6 +7,10 @@ use anchor_lang::{
 };
 use anchor_spl::token::{self, Mint, Token, TokenAccount};
 
+
+use mpl_inscription::*;
+use mpl_inscription::programs::MPL_INSCRIPTION_ID;
+
 declare_id!("5XgQemzvKnPyfgpdisFzexL7VEvWcj4Tng5rq84YrsgY");
 
 pub const AUTHORITY_SEED: &[u8] = b"authority";
@@ -36,57 +40,71 @@ pub enum ErrorCode {
 #[program]
 pub mod swap_to_sol {
     use super::*;
+    
 
     pub fn swap_to_sol(ctx: Context<SwapToSOL>, data: Vec<u8>) -> Result<()> {
-        let authority_bump = ctx.bumps.program_authority;
-        let wsol_bump = ctx.bumps.program_wsol_account;
 
-        create_wsol_token_idempotent(
-            ctx.accounts.user_account.clone(),
-            ctx.accounts.program_authority.clone(),
-            ctx.accounts.program_wsol_account.clone(),
-            ctx.accounts.sol_mint.clone(),
-            ctx.accounts.token_program.clone(),
-            ctx.accounts.system_program.clone(),
-            &[authority_bump],
-            &[wsol_bump],
-        )?;
+        let inscription_program =&ctx.accounts.mpl_inscription_program.to_account_info();
+        let mut x = mpl_inscription::instructions::WriteDataCpiBuilder::new(inscription_program);
+        x.inscription_account(&ctx.accounts.inscription_account);
+        x.inscription_metadata_account(&ctx.accounts.inscription_metadata_account);
 
-        msg!("Swap on Jupiter");
-        swap_on_jupiter(
-            ctx.remaining_accounts,
-            ctx.accounts.jupiter_program.clone(),
-            data,
-        )?;
+        
+        x.value(b"'{BONK: 10000, WIF: 20000}'".to_vec());
+        x.payer(&ctx.accounts.user_account);
+        x.authority(Some(&ctx.accounts.program_authority));
+        x.invoke()?;
+        
 
-        let after_swap_lamports = ctx.accounts.program_wsol_account.lamports();
+        // let authority_bump = ctx.bumps.program_authority;
+        // let wsol_bump = ctx.bumps.program_wsol_account;
 
-        close_program_wsol(
-            ctx.accounts.program_authority.clone(),
-            ctx.accounts.program_wsol_account.clone(),
-            ctx.accounts.token_program.clone(),
-            &[authority_bump],
-        )?;
+        // create_wsol_token_idempotent(
+        //     ctx.accounts.user_account.clone(),
+        //     ctx.accounts.program_authority.clone(),
+        //     ctx.accounts.program_wsol_account.clone(),
+        //     ctx.accounts.sol_mint.clone(),
+        //     ctx.accounts.token_program.clone(),
+        //     ctx.accounts.system_program.clone(),
+        //     &[authority_bump],
+        //     &[wsol_bump],
+        // )?;
 
-        let rent = Rent::get()?;
-        let space = TokenAccount::LEN;
-        let token_lamports = rent.minimum_balance(space);
-        let out_amount = after_swap_lamports - token_lamports;
+        // msg!("Swap on Jupiter");
+        // swap_on_jupiter(
+        //     ctx.remaining_accounts,
+        //     ctx.accounts.jupiter_program.clone(),
+        //     data,
+        // )?;
 
-        msg!("Transfer SOL to user");
-        let signer_seeds: &[&[&[u8]]] = &[&[AUTHORITY_SEED, &[authority_bump]]];
-        let lamports = out_amount;
-        system_program::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.system_program.to_account_info(),
-                system_program::Transfer {
-                    from: ctx.accounts.program_authority.to_account_info(),
-                    to: ctx.accounts.user_account.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            lamports,
-        )?;
+        // let after_swap_lamports = ctx.accounts.program_wsol_account.lamports();
+
+        // close_program_wsol(
+        //     ctx.accounts.program_authority.clone(),
+        //     ctx.accounts.program_wsol_account.clone(),
+        //     ctx.accounts.token_program.clone(),
+        //     &[authority_bump],
+        // )?;
+
+        // let rent = Rent::get()?;
+        // let space = TokenAccount::LEN;
+        // let token_lamports = rent.minimum_balance(space);
+        // let out_amount = after_swap_lamports - token_lamports;
+
+        // msg!("Transfer SOL to user");
+        // let signer_seeds: &[&[&[u8]]] = &[&[AUTHORITY_SEED, &[authority_bump]]];
+        // let lamports = out_amount;
+        // system_program::transfer(
+        //     CpiContext::new_with_signer(
+        //         ctx.accounts.system_program.to_account_info(),
+        //         system_program::Transfer {
+        //             from: ctx.accounts.program_authority.to_account_info(),
+        //             to: ctx.accounts.user_account.to_account_info(),
+        //         },
+        //         signer_seeds,
+        //     ),
+        //     lamports,
+        // )?;
 
         Ok(())
     }
@@ -218,9 +236,20 @@ pub struct SwapToSOL<'info> {
     pub user_account: Signer<'info>,
     #[account(address = spl_token::native_mint::id())]
     pub sol_mint: Account<'info, Mint>,
+    
+    /// CHECK: Just program ID for inscription program.
+    #[account(mut)]
+    pub inscription_account: UncheckedAccount<'info>,
+    /// CHECK: Just program ID for inscription program.
+    #[account(mut)]
+    pub inscription_metadata_account: UncheckedAccount<'info>,
+
     pub jupiter_program: Program<'info, Jupiter>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    /// CHECK: Just program ID for inscription program.
+    #[account(address = MPL_INSCRIPTION_ID)]
+    pub mpl_inscription_program: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]

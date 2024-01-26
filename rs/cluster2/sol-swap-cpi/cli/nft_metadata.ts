@@ -3,9 +3,6 @@ import { createUmi } from "@metaplex-foundation/umi-bundle-defaults"
 import { createGenericFile, createSignerFromKeypair, signerIdentity } from "@metaplex-foundation/umi"
 import { createBundlrUploader } from "@metaplex-foundation/umi-uploader-bundlr"
 
-
-//Create a devnet connection
-//const umi = createUmi('https://api.devnet.solana.com');
 const umi = createUmi(connection);
 const bundlrUploader = createBundlrUploader(umi);
 
